@@ -1,121 +1,27 @@
-import React, {
-    useState,
-    useEffect,
-    useRef
-} from 'react';
+import React, { useState, useEffect } from 'react';
 
+import { Image, View } from 'react-native';
+import FastImage from 'react-native-fast-image';
 import PropTypes from 'prop-types';
 
-import {
-    Image,
-    TouchableOpacity,
-    ImageBackground
-} from 'react-native';
+const Resim = props => {
+	const { source, style, resizeMode } = props;
+	let { width, height } = props;
 
-const resolveAssetSource = Image.resolveAssetSource;
+	const [WH, setWH] = useState(null);
 
-const ScalableImage = props => {
-    const ImageComponent = props.background
-        ? ImageBackground
-        : Image;
+	useEffect(() => {
+		if (typeof source === 'object') Image.getSize(source.uri, (ow, oh) => setWH(width ? { width, height: width * (oh / ow) } : { width: height * (ow / oh), height }));
+		else {
+			const T = Image.resolveAssetSource(source);
+			setWH(width ? { width, height: width * (T.height / T.width) } : { width: height * (T.width / T.height), height })
+		}
+	}, [width, height, source]);
 
-    const [scalableWidth, setScalableWidth] = useState(null);
-    const [scalableHeight, setScalableHeight] = useState(null);
-    const [image, setImage] = useState(<ImageComponent />);
-    const mounted = useRef(false);
+	return WH ? <FastImage source={source} style={[WH, style]} resizeMode={resizeMode} /> : <View style={{ width, height }} />;
+}
 
-    useEffect(() => {
-        mounted.current = true;
+Resim.propTypes = { width: PropTypes.number, height: PropTypes.number };
+Resim.defaultProps = { width: null, height: null };
 
-        return () => {
-            mounted.current = false;
-        }
-    }, []);
-
-    useEffect(() => {
-        onProps(props);
-    });
-
-    useEffect(() => {
-        setImage(
-            <ImageComponent
-                {...props}
-                style={[props.style, {
-                    width: scalableWidth,
-                    height: scalableHeight
-                }]}
-            />
-        );
-    }, [props, scalableHeight, scalableWidth]);
-
-    const onProps = localProps => {
-        const { source } = localProps;
-        if (source.uri) {
-            const sourceToUse = source.uri
-                ? source.uri
-                : source;
-
-            Image.getSize(
-                sourceToUse,
-                (width, height) => adjustSize(width, height, props),
-                console.err
-            );
-        }
-        else {
-            const sourceToUse = resolveAssetSource(source);
-            adjustSize(sourceToUse.width, sourceToUse.height, props);
-        }
-    };
-
-    const adjustSize = (sourceWidth, sourceHeight, localProps) => {
-        const { width, height } = localProps;
-
-        let ratio = 1;
-
-        if (width && height) {
-            ratio = Math.min(width / sourceWidth, height / sourceHeight);
-        }
-        else if (width) {
-            ratio = width / sourceWidth;
-        }
-        else if (height) {
-            ratio = height / sourceHeight;
-        }
-
-        if (mounted.current) {
-            const computedWidth = sourceWidth * ratio;
-            const computedHeight = sourceHeight * ratio;
-
-            setScalableWidth(computedWidth);
-            setScalableHeight(computedHeight);
-
-            props.onSize({ width: computedWidth, height: computedHeight });
-        }
-    };
-
-    if (!props.onPress) {
-        return image;
-    }
-    else {
-        return (
-            <TouchableOpacity onPress={props.onPress}>
-                {image}
-            </TouchableOpacity>
-        );
-    }
-};
-
-ScalableImage.propTypes = {
-    width: PropTypes.number,
-    height: PropTypes.number,
-    onPress: PropTypes.func,
-    onSize: PropTypes.func,
-    background: PropTypes.bool,
-};
-
-ScalableImage.defaultProps = {
-    background: false,
-    onSize: size => {}
-};
-
-export default ScalableImage;
+export default Resim;
